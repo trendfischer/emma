@@ -12,3 +12,7 @@ emma is a graphical toolkit for MySQL database developers and administrators, it
    tab-completion + Automatic SQL statement formatting 
  * Export to CSV files 
  * Multiple simultaneously opened MySQL connection
+
+Building and Installing
+ make
+ sudo make install

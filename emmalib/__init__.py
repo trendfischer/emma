@@ -40,7 +40,7 @@ else:
     from mysql_query_tab import *
 
 try:
-    import pysqlite2.dbapi2 as sqlite3
+    import sqlite3.dbapi2 as sqlite3
     have_sqlite = True
     from sqlite_host import *
 except:

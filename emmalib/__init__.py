@@ -1491,10 +1491,11 @@ the author knows no way to deselect this database. do you want to continue?""" %
         iter = q.model.get_iter_first()
         indices = range(q.model.get_n_columns())
         field_delim = self.config["save_result_as_csv_delim"]
+        field_enclosure = self.config["save_result_as_csv_enclosure"]
         line_delim = self.config["save_result_as_csv_line_delim"]
         try:
             fp = file(filename, "wb")
-            for search, replace in {"\\n": "\n", "\\r": "\r", "\\t": "\t", "\\0": "\0"}.iteritems():
+            for search, replace in {'\\"': "\"", "\\'": "'", "\\n": "\n", "\\r": "\r", "\\t": "\t", "\\0": "\0"}.iteritems():
                 field_delim = field_delim.replace(search, replace)
                 line_delim = line_delim.replace(search, replace)
             while iter:
@@ -1502,7 +1503,10 @@ the author knows no way to deselect this database. do you want to continue?""" %
                 for field in row:
                     value = field
                     if value is None: value = ""
-                    fp.write(value.replace(field_delim, "\\" + field_delim))
+                    value = value.replace(field_enclosure, "\\" + field_enclosure)
+                    fp.write(field_enclosure)
+                    fp.write(value)
+                    fp.write(field_enclosure)
                     fp.write(field_delim)
                 fp.write(line_delim)
                 iter = q.model.iter_next(iter)
@@ -2923,6 +2927,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             "template3_quick filter 500": "select * from $table$ where $field_conditions$ limit 500",
             "copy_record_as_csv_delim": ",",
             "save_result_as_csv_delim": ",",
+            "save_result_as_csv_enclosure": "\"",
             "save_result_as_csv_line_delim": "\\n",
             "ping_connection_interval": "300",
             "ask_execute_query_from_disk_min_size": "1024000",

@@ -1,5 +1,7 @@
-emma: extendable MySQL managing assistant 
+emma
 ====
+### Extendable MySQL Managing Assistant
+
 emma is a graphical toolkit for MySQL database developers and administrators, it is the successor of yamysqlfront. 
  
  Its main features are: 
@@ -9,3 +11,10 @@ emma is a graphical toolkit for MySQL database developers and administrators, it
    tab-completion + Automatic SQL statement formatting 
  * Export to CSV files 
  * Multiple simultaneously opened MySQL connection
+
+#### Building and Installing:
+it should be as easy as..
+```
+make
+sudo make install
+```

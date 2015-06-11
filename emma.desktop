@@ -1,0 +1,19 @@
+[Desktop Entry]
+Name=emma
+Name[nl]=emma
+GenericName=MySQL Manager
+GenericName[nl]=MySQL Manager
+Comment=Manage MySQL servers and databases
+Comment[nl]=MySQL servers en databases beheren
+Exec=emma %U
+Terminal=false
+Type=Application
+StartupNotify=true
+MimeType=text/plain;
+Icon=/usr/share/emma/icons/emma.png
+Categories=GNOME;GTK;Utility;
+X-GNOME-FullName=emma
+X-GNOME-FullName[nl]=emma
+Actions=Window;Document;
+Keywords=MySQL;Manager;
+Keywords[nl]=MySQL;Beheer;

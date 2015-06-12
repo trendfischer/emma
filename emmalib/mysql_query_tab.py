@@ -17,10 +17,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
-import pango
-import gtk
+from gi.repository import Pango
+from gi.repository import Gtk, GtkSource
 import traceback
-import gtksourceview2 as gtksourceview
 
 class mysql_query_tab:
 	def __init__(self, xml, nb):
@@ -46,20 +45,20 @@ class mysql_query_tab:
 		}
 		
 		for attribute, xmlname in renameload.iteritems():
-			self.__dict__[attribute] = xml.get_widget(xmlname)
+			self.__dict__[attribute] = xml.get_object(xmlname)
 
-		self.toolbar.set_style(gtk.TOOLBAR_ICONS)
+		self.toolbar.set_style(Gtk.ToolbarStyle.ICONS)
 
-		print "Try to insert gtksourceview \n"
-		# replace textview with gtksourcevice
+		print "Try to insert GtkSource \n"
+		# replace textview with GtkSource
 		try:
 			org_tv = self.textview
-			manager = gtksourceview.language_manager_get_default()
+			manager = GtkSource.LanguageManager()
 			language = manager.get_language("sql")
 
-			sourceViewBuffer = gtksourceview.Buffer()
+			sourceViewBuffer = GtkSource.Buffer()
 			sourceViewBuffer.set_language(language)
-			sv = self.textview = gtksourceview.View(sourceViewBuffer)
+			sv = self.textview = GtkSource.View.new_with_buffer(sourceViewBuffer)
 
 			self.query_text_sw.remove(org_tv)
 			self.query_text_sw.add(sv)
@@ -72,8 +71,9 @@ class mysql_query_tab:
 				#(int, "tabs_width", 4),
 				(bool, "auto_indent", True),
 				(bool, "insert_spaces_instead_of_tabs", False),
-				(bool, "show_right_margin", True),
+				(bool, "show_right_margin", False),
 				(int, "right_margin_position", 80),
+				(int, "pixels_below_lines", 4),
 				(bool, "smart_home_end", True)):
 
 				cn = "sourceview.%s" % pn
@@ -105,7 +105,7 @@ class mysql_query_tab:
 				method = getattr(sourceViewBuffer, "set_%s" % pn)
 				method(v)
 		except:
-			print "error inserting gtksourceview:\n%s" % traceback.format_exc()
+			print "error inserting GtkSource:\n%s" % traceback.format_exc()
 			
 		self.current_host = None
 		self.current_db = None
@@ -151,7 +151,7 @@ class mysql_query_tab:
 		if not tab_widget:
 			print "no tab widget"
 			return
-		labels = filter(lambda w: type(w) == gtk.Label, tab_widget.get_children())
+		labels = filter(lambda w: type(w) == Gtk.Label, tab_widget.get_children())
 		if not labels:
 			print "no label found!"
 			return
@@ -226,12 +226,12 @@ class mysql_query_tab:
 		
 	def set_query_font(self, font_name):
 		self.textview.get_pango_context()
-		fd = pango.FontDescription(font_name)
+		fd = Pango.FontDescription(font_name)
 		self.textview.modify_font(fd)
 
 	def set_result_font(self, font_name):
 		self.treeview.get_pango_context()
-		fd = pango.FontDescription(font_name)
+		fd = Pango.FontDescription(font_name)
 		self.treeview.modify_font(fd)
 
 	def set_wrap_mode(self, wrap):

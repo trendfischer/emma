@@ -30,6 +30,15 @@ import sql
 import traceback
 from query_regular_expression import *
 
+try:
+    from gi.repository import Gtk
+    #from gtk import keysyms
+    from gi.repository import GObject
+    from gi.repository import Gdk
+    from gi.repository.GdkPixbuf import Pixbuf
+except:
+    print "no Gtk. you will not be able to start emma.", sys.exc_value
+
 if __name__ != "__main__":
     from emmalib import __file__ as emmalib_file
     from emmalib.mysql_host import *
@@ -46,16 +55,6 @@ try:
 except:
     print traceback.format_exc()
     have_sqlite = False
-
-try:
-    import gtk
-    from gtk import keysyms
-    import gobject
-    import gtk.gdk
-    import gtk.glade
-except:
-    print "no gtk. you will not be able to start emma.", sys.exc_value
-
 
 
 import pprint
@@ -102,48 +101,49 @@ class Emma:
             sys.exit(-1)
         
         print "glade file: %r" % self.glade_file
-        self.xml = gtk.glade.XML(self.glade_file)
-        self.mainwindow = self.xml.get_widget("mainwindow")
-        self.mainwindow.connect('destroy', lambda *args: gtk.main_quit())
-        self.xml.signal_autoconnect(self)
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file(self.glade_file)
+        self.mainwindow = self.builder.get_object("mainwindow")
+        self.mainwindow.connect('destroy', lambda *args: Gtk.main_quit())
+        self.builder.connect_signals(self)
         
         self.load_icons()
         
         # setup sql_log
-        self.sql_log_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING)
-        self.sql_log_tv = self.xml.get_widget("sql_log_tv")
+        self.sql_log_model = Gtk.ListStore(GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_STRING)
+        self.sql_log_tv = self.builder.get_object("sql_log_tv")
         self.sql_log_tv.set_model(self.sql_log_model)
-        self.sql_log_tv.append_column(gtk.TreeViewColumn("time", gtk.CellRendererText(), text=0))
-        self.sql_log_tv.append_column(gtk.TreeViewColumn("query", gtk.CellRendererText(), markup=1))
+        self.sql_log_tv.append_column(Gtk.TreeViewColumn("time", Gtk.CellRendererText(), text=0))
+        self.sql_log_tv.append_column(Gtk.TreeViewColumn("query", Gtk.CellRendererText(), markup=1))
         if hasattr(self, "state"):
             for log in self.state["sql_logs"]:
                 self.sql_log_model.append(log)
         
         # setup msg
-        self.msg_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
-        self.msg_tv = self.xml.get_widget("msg_tv")
+        self.msg_model = Gtk.ListStore(GObject.TYPE_STRING, GObject.TYPE_STRING)
+        self.msg_tv = self.builder.get_object("msg_tv")
         self.msg_tv.set_model(self.msg_model)
-        self.msg_tv.append_column(gtk.TreeViewColumn("time", gtk.CellRendererText(), text=0))
-        self.msg_tv.append_column(gtk.TreeViewColumn("message", gtk.CellRendererText(), text=1))
+        self.msg_tv.append_column(Gtk.TreeViewColumn("time", Gtk.CellRendererText(), text=0))
+        self.msg_tv.append_column(Gtk.TreeViewColumn("message", Gtk.CellRendererText(), text=1))
         
-        self.blob_tv = self.xml.get_widget("blob_tv")
+        self.blob_tv = self.builder.get_object("blob_tv")
         self.blob_tv.set_sensitive(False)
         self.blob_buffer = self.blob_tv.get_buffer()
         self.blob_view_visible = False
         
         # setup connections
-        self.connections_model = gtk.TreeStore(gobject.TYPE_PYOBJECT);
-        self.connections_tv = self.xml.get_widget("connections_tv")
+        self.connections_model = Gtk.TreeStore(GObject.TYPE_PYOBJECT);
+        self.connections_tv = self.builder.get_object("connections_tv")
         self.connections_tv.set_model(self.connections_model)
-        col = gtk.TreeViewColumn("MySQL-Hosts")
+        col = Gtk.TreeViewColumn("MySQL-Hosts")
         
-        pixbuf_renderer = gtk.CellRendererPixbuf()
+        pixbuf_renderer = Gtk.CellRendererPixbuf()
         col.pack_start(pixbuf_renderer, False)
         #col.add_attribute(pixbuf_renderer, "pixbuf", 1)
         col.set_cell_data_func(pixbuf_renderer, self.render_connections_pixbuf)
         
-        text_renderer = gtk.CellRendererText()
-        col.pack_end(text_renderer)
+        text_renderer = Gtk.CellRendererText()
+        col.pack_end(text_renderer, True)
         #col.add_attribute(text_renderer, "text", 2)
         col.set_cell_data_func(text_renderer, self.render_connections_text)
         
@@ -153,30 +153,30 @@ class Emma:
         #connections_tv.insert_column_with_data_func(-1, "MySQL-Hosts", col)
         
         # processlist
-        self.processlist_tv = self.xml.get_widget("processlist_treeview")
+        self.processlist_tv = self.builder.get_object("processlist_treeview")
         self.processlist_model = None
         
         
-        self.local_search_window = self.xml.get_widget("localsearch_window")
-        self.local_search_entry = self.xml.get_widget("local_search_entry")
-        self.local_search_entry.connect("activate", lambda *a: self.local_search_window.response(gtk.RESPONSE_OK));
-        self.local_search_start_at_first_row = self.xml.get_widget("search_start_at_first_row")
-        self.local_search_case_sensitive = self.xml.get_widget("search_case_sensitive")
+        self.local_search_window = self.builder.get_object("localsearch_window")
+        self.local_search_entry = self.builder.get_object("local_search_entry")
+        self.local_search_entry.connect("activate", lambda *a: self.local_search_window.response(Gtk.ResponseType.OK));
+        self.local_search_start_at_first_row = self.builder.get_object("search_start_at_first_row")
+        self.local_search_case_sensitive = self.builder.get_object("search_case_sensitive")
 
-        self.clipboard = gtk.Clipboard(gtk.gdk.display_get_default(), "CLIPBOARD")
-        self.pri_clipboard = gtk.Clipboard(gtk.gdk.display_get_default(), "PRIMARY")
+        self.clipboard = Gtk.Clipboard.get_for_display(Gdk.Display.get_default(), Gdk.SELECTION_CLIPBOARD)
+        self.pri_clipboard = Gtk.Clipboard.get_for_display(Gdk.Display.get_default(), Gdk.SELECTION_PRIMARY)
         
-        self.field_edit = self.xml.get_widget("field_edit")
-        self.field_edit_content = self.xml.get_widget("edit_field_content")
+        self.field_edit = self.builder.get_object("field_edit")
+        self.field_edit_content = self.builder.get_object("edit_field_content")
 
         self.table_property_labels = []
         self.table_property_entries = []
         self.table_description_size = (0, 0)
-        self.table_description = self.xml.get_widget("table_description")
+        self.table_description = self.builder.get_object("table_description")
         
-        self.query_notebook = self.xml.get_widget("query_notebook")
+        self.query_notebook = self.builder.get_object("query_notebook")
         
-        self.tooltips = gtk.Tooltips()
+        self.tooltips = Gtk.Tooltip()
         self.sort_timer_running = False
         self.execution_timer_running = False
         self.field_conditions_initialized = False
@@ -190,7 +190,7 @@ class Emma:
             self.hosts = {}
             self.load_config()
             self.queries = []
-            self.add_query_tab(mysql_query_tab(self.xml, self.query_notebook))
+            self.add_query_tab(mysql_query_tab(self.builder, self.query_notebook))
         else:
             self.hosts = self.state["hosts"]
             self.load_config(True)
@@ -198,31 +198,32 @@ class Emma:
             first = True
             for q in self.state["queries"]:
                 if first:
-                    xml = self.xml
+                    builder = self.builder
                 else:
-                    xml = gtk.glade.XML(self.glade_file, "first_query")
+                    builder = Gtk.Builder()
+                    builder.add_from_file(self.glade_file)
                     
-                new_page = xml.get_widget("first_query")
-                q.__init__(xml, self.query_notebook)
+                new_page = builder.get_object("first_query")
+                q.__init__(builder, self.query_notebook)
                 self.add_query_tab(q)
                 
                 if first:
                     first = False
                     self.query_notebook.set_tab_label_text(new_page, q.name)
                 else:
-                    label = gtk.Label(q.name)
+                    label = Gtk.Label(label=q.name)
                     label.show()
                     self.query_notebook.append_page(new_page, label)
 
         if int(self.config["ping_connection_interval"]) > 0:
-            gobject.timeout_add(
+            GObject.timeout_add(
                 int(self.config["ping_connection_interval"]) * 1000,
                 self.on_connection_ping
             )
         self.init_plugins()
 
     def __getattr__(self, name):
-        widget = self.xml.get_widget(name)
+        widget = self.builder.get_object(name)
         if widget is None:
             raise AttributeError(name)
         return widget
@@ -332,9 +333,9 @@ class Emma:
         qt.set_query_font(self.config["query_text_font"])
         qt.set_result_font(self.config["query_result_font"])
         if self.config_get_bool("query_text_wrap"):
-            qt.set_wrap_mode(gtk.WRAP_WORD)
+            qt.set_wrap_mode(Gtk.WrapMode.WORD)
         else:
-            qt.set_wrap_mode(gtk.WRAP_NONE)
+            qt.set_wrap_mode(Gtk.WrapMode.NONE)
         qt.set_current_host(self.current_host)
 
     def del_query_tab(self, qt):
@@ -694,15 +695,15 @@ class Emma:
                 sort_col = new_order[field_name]
                 col.set_sort_indicator(True)
                 if sort_col: 
-                    col.set_sort_order(gtk.SORT_ASCENDING)
+                    col.set_sort_order(Gtk.SortType.ASCENDING)
                 else:
-                    col.set_sort_order(gtk.SORT_DESCENDING)
+                    col.set_sort_order(Gtk.SortType.DESCENDING)
             except:
                 col.set_sort_indicator(False)
             
         if not self.sort_timer_running:
             self.sort_timer_running = True
-            gobject.timeout_add(
+            GObject.timeout_add(
                 100 + int(self.config["result_view_column_sort_timeout"]),
                 self.on_sort_timer
             )
@@ -747,19 +748,19 @@ class Emma:
         
     def on_blob_wrap_check_clicked(self, button):
         if button.get_active():
-            self.blob_tv.set_wrap_mode(gtk.WRAP_WORD)
+            self.blob_tv.set_wrap_mode(Gtk.WrapMode.WORD)
         else:
-            self.blob_tv.set_wrap_mode(gtk.WRAP_NONE)
+            self.blob_tv.set_wrap_mode(Gtk.WrapMode.NONE)
         
     def on_blob_load_clicked(self, button):
         d = self.assign_once("load dialog", 
-            gtk.FileChooserDialog, "load blob contents", self.mainwindow, gtk.FILE_CHOOSER_ACTION_OPEN, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, "load blob contents", self.mainwindow, Gtk.FileChooserAction.OPEN, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
             
         filename = d.get_filename()
         try:
@@ -773,13 +774,13 @@ class Emma:
         
     def on_blob_save_clicked(self, button):
         d = self.assign_once("save dialog", 
-            gtk.FileChooserDialog, "save blob contents", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, "save blob contents", self.mainwindow, Gtk.FileChooserAction.SAVE, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
         filename = d.get_filename()
         if os.path.exists(filename):
             if not os.path.isfile(filename):
@@ -788,7 +789,7 @@ class Emma:
             if not self.confirm("overwrite file?", "%s already exists! do you want to overwrite it?" % filename):
                 return
         b = self.blob_tv.get_buffer()
-        new_value = b.get_text(b.get_start_iter(), b.get_end_iter()).encode(self.current_query.encoding, "ignore")
+        new_value = b.get_text(b.get_start_iter(), b.get_end_iter(), False).encode(self.current_query.encoding, "ignore")
         try:
             fp = file(filename, "wb")
             fp.write(new_value)
@@ -958,8 +959,8 @@ class Emma:
             self.show_message("execute query from disk", "no host selected!")
             return
             
-        d = self.get_widget("execute_query_from_disk")
-        fc = self.assign_once("eqfd_file_chooser", self.xml.get_widget, "eqfd_file_chooser")
+        d = self.get_object("execute_query_from_disk")
+        fc = self.assign_once("eqfd_file_chooser", self.builder.get_object, "eqfd_file_chooser")
         if filename:
             fc.set_filename(filename)
         else:
@@ -969,19 +970,19 @@ class Emma:
         d.show()
         
     def on_eqfd_limit_db_toggled(self, button):
-        entry = self.get_widget("eqfd_db_entry")
+        entry = self.get_object("eqfd_db_entry")
         entry.set_sensitive(button.get_active())
         
     def on_eqfd_exclude_toggled(self, button):
-        entry = self.get_widget("eqfd_exclude_entry")
+        entry = self.get_object("eqfd_exclude_entry")
         entry.set_sensitive(button.get_active())
         
     def on_abort_execute_from_disk_clicked(self, button):
-        d = self.get_widget("execute_query_from_disk")
+        d = self.get_object("execute_query_from_disk")
         d.hide()
         
-    def get_widget(self, name):
-        return self.assign_once("widget_%s" % name, self.xml.get_widget, name)
+    def get_object(self, name):
+        return self.assign_once("widget_%s" % name, self.builder.get_object, name)
 
     def read_query(self, query, start=0):
         try:    
@@ -1058,11 +1059,11 @@ class Emma:
         
     def on_start_execute_from_disk_clicked(self, button):
         host = self.current_host
-        d = self.get_widget("execute_query_from_disk")
-        fc = self.get_widget("eqfd_file_chooser")
+        d = self.get_object("execute_query_from_disk")
+        fc = self.get_object("eqfd_file_chooser")
         
-        exclude = self.get_widget("eqfd_exclude").get_active()
-        exclude_regex = self.get_widget("eqfd_exclude_entry").get_text()
+        exclude = self.get_object("eqfd_exclude").get_active()
+        exclude_regex = self.get_object("eqfd_exclude_entry").get_text()
         exclude = exclude and exclude_regex
         if exclude:
             try:
@@ -1100,24 +1101,24 @@ class Emma:
                 return
         d.hide()
         
-        start_line = self.get_widget("eqfd_start_line").get_value()
+        start_line = self.get_object("eqfd_start_line").get_value()
         if start_line < 1:
             start_line = 1
-        ui = self.get_widget("eqfd_update_interval")
+        ui = self.get_object("eqfd_update_interval")
         update_interval = ui.get_value()
         if update_interval == 0:
             update_interval = 2
             
-        p = self.get_widget("execute_from_disk_progress")
-        pb = self.get_widget("exec_progress")
-        offset_entry = self.get_widget("edfq_offset")
-        line_entry = self.get_widget("eqfd_line")
-        query_entry = self.get_widget("eqfd_query")
-        eta_label = self.get_widget("eqfd_eta")
-        append_to_log = self.get_widget("eqfd_append_to_log").get_active()
-        stop_on_error = self.get_widget("eqfd_stop_on_error").get_active()
-        limit_dbname = self.get_widget("eqfd_db_entry").get_text()
-        limit_db = self.get_widget("eqfd_limit_db").get_active() and limit_dbname != ""
+        p = self.get_object("execute_from_disk_progress")
+        pb = self.get_object("exec_progress")
+        offset_entry = self.get_object("edfq_offset")
+        line_entry = self.get_object("eqfd_line")
+        query_entry = self.get_object("eqfd_query")
+        eta_label = self.get_object("eqfd_eta")
+        append_to_log = self.get_object("eqfd_append_to_log").get_active()
+        stop_on_error = self.get_object("eqfd_stop_on_error").get_active()
+        limit_dbname = self.get_object("eqfd_db_entry").get_text()
+        limit_db = self.get_object("eqfd_limit_db").get_active() and limit_dbname != ""
 
         if limit_db:
             limit_re = re.compile("(?is)^use[ \r\n\t]+`?" + re.escape(limit_dbname) + "`?|^create database[^`]+`?" + re.escape(limit_dbname) + "`?")
@@ -1200,7 +1201,7 @@ class Emma:
         
     def on_cancel_execute_from_disk_clicked(self, button):
         if not self.query_from_disk:
-            p = self.assign_once("execute_from_disk_progress", self.xml.get_widget, "execute_from_disk_progress")
+            p = self.assign_once("execute_from_disk_progress", self.builder.get_object, "execute_from_disk_progress")
             p.hide()
             return
         self.read_one_query_started = False
@@ -1211,7 +1212,7 @@ class Emma:
         q = self.current_query
         if not query:
             b = q.textview.get_buffer()
-            text = b.get_text(b.get_start_iter(), b.get_end_iter())
+            text = b.get_text(b.get_start_iter(), b.get_end_iter(), False)
         else:
             text = query
         
@@ -1280,7 +1281,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
             query_count += 1
             query_hint = re.sub("[\n\r\t ]+", " ", thisquery[:40])
             q.label.set_text("executing query %d %s..." % (query_count, query_hint))
-            q.label.window.process_updates(False)
+            q.label.get_window().process_updates(False)
             
             appendable = False
             appendable_result = self.is_query_appendable(thisquery)
@@ -1360,7 +1361,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
             for c, o in current_order:
                 sort_fields[c.lower()] = o
             q.label.set_text("downloading resultset...")
-            q.label.window.process_updates(False)
+            q.label.get_window().process_updates(False)
             
             start_download = time.time()
             result = host.handle.store_result()
@@ -1368,7 +1369,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
             if download_time < 0: download_time = 0
     
             q.label.set_text("displaying resultset...");
-            q.label.window.process_updates(False)
+            q.label.get_window().process_updates(False)
             
             # store field info
             q.result_info = result.describe()
@@ -1377,14 +1378,14 @@ the author knows no way to deselect this database. do you want to continue?""" %
             for col in q.treeview.get_columns():
                 q.treeview.remove_column(col)
                 
-            columns = [gobject.TYPE_STRING] * field_count
-            q.model = gtk.ListStore(*columns)
+            columns = [GObject.TYPE_STRING] * field_count
+            q.model = Gtk.ListStore(*columns)
             q.treeview.set_model(q.model)
             q.treeview.set_rules_hint(True)
             q.treeview.set_headers_clickable(True)
             for i in range(field_count):
                 title = q.result_info[i][0].replace("_", "__").replace("[\r\n\t ]+", " ")
-                text_renderer = gtk.CellRendererText()
+                text_renderer = Gtk.CellRendererText()
                 if q.editable:
                     text_renderer.set_property("editable", True)
                     text_renderer.connect("edited", self.on_query_change_data, i)
@@ -1408,9 +1409,9 @@ the author knows no way to deselect this database. do you want to continue?""" %
                         sort_col = sort_fields[field_name]
                         col.set_sort_indicator(True)
                         if sort_col: 
-                            col.set_sort_order(gtk.SORT_ASCENDING)
+                            col.set_sort_order(Gtk.SortType.ASCENDING)
                         else:
-                            col.set_sort_order(gtk.SORT_DESCENDING)
+                            col.set_sort_order(Gtk.SortType.DESCENDING)
                     except:
                         col.set_sort_indicator(False)
                 else:
@@ -1437,7 +1438,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
                 if (now - last_display) < 0.2: continue
                     
                 q.label.set_text("displayed %d rows..." % cnt)
-                q.label.window.process_updates(False)
+                q.label.get_window().process_updates(False)
                 last_display = now
             
             display_time = time.time() - start_display
@@ -1462,8 +1463,8 @@ the author knows no way to deselect this database. do you want to continue?""" %
     
         q.label.set_text(' '.join(result))
         self.blob_tv.set_editable(q.editable)
-        self.get_widget("blob_update").set_sensitive(q.editable)
-        self.get_widget("blob_load").set_sensitive(q.editable)
+        self.get_object("blob_update").set_sensitive(q.editable)
+        self.get_object("blob_load").set_sensitive(q.editable)
         # todo update_buttons();    
         gc.collect()
         return True
@@ -1473,13 +1474,13 @@ the author knows no way to deselect this database. do you want to continue?""" %
             return
         
         d = self.assign_once("save results dialog", 
-            gtk.FileChooserDialog, "save results", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, "save results", self.mainwindow, Gtk.FileChooserAction.SAVE, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
         filename = d.get_filename()
         if os.path.exists(filename):
             if not os.path.isfile(filename):
@@ -1520,13 +1521,13 @@ the author knows no way to deselect this database. do you want to continue?""" %
             return
         title = "save results as sql insert script"
         d = self.assign_once("save results dialog", 
-            gtk.FileChooserDialog, title, self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, title, self.mainwindow, Gtk.FileChooserAction.SAVE, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
         filename = d.get_filename()
         if os.path.exists(filename):
             if not os.path.isfile(filename):
@@ -1590,13 +1591,13 @@ the author knows no way to deselect this database. do you want to continue?""" %
             return
         
         d = self.assign_once("save dialog", 
-            gtk.FileChooserDialog, "save query", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, "save query", self.mainwindow, Gtk.FileChooserAction.SAVE, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
         filename = d.get_filename()
         if os.path.exists(filename):
             if not os.path.isfile(filename):
@@ -1605,7 +1606,7 @@ the author knows no way to deselect this database. do you want to continue?""" %
             if not self.confirm("overwrite file?", "%s already exists! do you want to overwrite it?" % filename):
                 return
         b = self.current_query.textview.get_buffer()
-        query_text = b.get_text(b.get_start_iter(), b.get_end_iter())
+        query_text = b.get_text(b.get_start_iter(), b.get_end_iter(), False)
         try:
             fp = file(filename, "wb")
             fp.write(query_text)
@@ -1618,13 +1619,13 @@ the author knows no way to deselect this database. do you want to continue?""" %
             return
         
         d = self.assign_once("load dialog", 
-            gtk.FileChooserDialog, "load query", self.mainwindow, gtk.FILE_CHOOSER_ACTION_OPEN, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, "load query", self.mainwindow, Gtk.FileChooserAction.OPEN, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
             
         filename = d.get_filename()
         try:
@@ -1658,13 +1659,13 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         
     def on_save_workspace_activate(self, button):
         d = self.assign_once("save workspace dialog", 
-            gtk.FileChooserDialog, "save workspace", self.mainwindow, gtk.FILE_CHOOSER_ACTION_SAVE, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, "save workspace", self.mainwindow, Gtk.FileChooserAction.SAVE, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
         filename = d.get_filename()
         if os.path.exists(filename):
             if not os.path.isfile(filename):
@@ -1682,13 +1683,13 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     def on_restore_workspace_activate(self, button):
         global new_instance
         d = self.assign_once("restore workspace dialog", 
-            gtk.FileChooserDialog, "restore workspace", self.mainwindow, gtk.FILE_CHOOSER_ACTION_OPEN, 
-                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT))
+            Gtk.FileChooserDialog, "restore workspace", self.mainwindow, Gtk.FileChooserAction.OPEN, 
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT, Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT))
         
-        d.set_default_response(gtk.RESPONSE_ACCEPT)
+        d.set_default_response(Gtk.ResponseType.ACCEPT)
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_ACCEPT: return
+        if not answer == Gtk.ResponseType.ACCEPT: return
         filename = d.get_filename()
         if not os.path.exists(filename):
             self.show_message("restore workspace", "%s does not exists!" % filename)
@@ -1720,7 +1721,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             self.local_search_entry.grab_focus()
             answer = self.local_search_window.run()
             self.local_search_window.hide()
-            if not answer == gtk.RESPONSE_OK: return
+            if not answer == Gtk.ResponseType.OK: return
         regex = self.local_search_entry.get_text()
         if self.local_search_case_sensitive.get_active():
             regex = "(?i)" + regex;
@@ -1756,40 +1757,39 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         self.show_message("local regex search", "sorry, no match found!\ntry to search from the beginning or execute a less restrictive query...")
         
     def on_query_font_clicked(self, button):
-        d = self.assign_once("query text font", gtk.FontSelectionDialog, "select query font")
+        d = self.assign_once("query text font", Gtk.FontSelectionDialog, "select query font")
         d.set_font_name(self.config["query_text_font"])
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_OK: return
+        if not answer == Gtk.ResponseType.OK: return
         font_name = d.get_font_name()
         self.current_query.set_query_font(font_name)
         self.config["query_text_font"] = font_name
         self.save_config()
 
     def on_query_result_font_clicked(self, button):
-        d = self.assign_once("query result font", gtk.FontSelectionDialog, "select result font")
+        d = self.assign_once("query result font", Gtk.FontSelectionDialog, "select result font")
         d.set_font_name(self.config["query_result_font"])
         answer = d.run()
         d.hide()
-        if not answer == gtk.RESPONSE_OK: return
+        if not answer == Gtk.ResponseType.OK: return
         font_name = d.get_font_name()
         self.current_query.set_result_font(font_name)
         self.config["query_result_font"] = font_name
         self.save_config()
         
     def on_newquery_button_clicked(self, button):
-        xml = gtk.glade.XML(self.glade_file, "first_query")
-        tab_label_hbox = gtk.glade.XML(self.glade_file, "tab_label_hbox")
-        new_page = xml.get_widget("first_query")
-        self.add_query_tab(mysql_query_tab(xml, self.query_notebook))
-        label = tab_label_hbox.get_widget("tab_label_hbox")
-        qtlabel = tab_label_hbox.get_widget("query_tab_label")
+        builder = Gtk.Builder()
+        builder.add_from_file(self.glade_file)
+        new_page = builder.get_object("first_query")
+        self.add_query_tab(mysql_query_tab(builder, self.query_notebook))
+        label = builder.get_object("tab_label_hbox")
+        qtlabel = builder.get_object("query_tab_label")
         #qtlabel.set_text("query%d" % self.query_count)
         self.query_notebook.append_page(new_page, label)
         self.query_notebook.set_current_page(len(self.queries) - 1)
         self.current_query.textview.grab_focus()
-        xml.signal_autoconnect(self)
-        tab_label_hbox.signal_autoconnect(self)
+        builder.connect_signals(self)
         
     def on_query_notebook_switch_page(self, nb, pointer, page):
         if page >= len(self.queries):
@@ -1831,7 +1831,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if self.processlist_timer_running: return
         self.processlist_timer_running = True
         self.processlist_timer_interval = value
-        gobject.timeout_add(int(value * 1000), self.on_processlist_refresh_timeout, button)
+        GObject.timeout_add(int(value * 1000), self.on_processlist_refresh_timeout, button)
         
     def on_fc_reset_clicked(self, button):
         for i in range(self.fc_count):
@@ -1845,10 +1845,10 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             if i: self.fc_logic_combobox[i - 1].set_active(0)
     
     def on_quit_activate(self, item):
-        gtk.main_quit()
+        Gtk.main_quit()
         
     def on_about_activate(self, item):
-        aboutdialog = self.xml.get_widget("aboutdialog")
+        aboutdialog = self.builder.get_object("aboutdialog")
         aboutdialog.set_version(version)
         aboutdialog.run()
         aboutdialog.hide()
@@ -1857,8 +1857,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         fp = file(os.path.join(emma_share_path, "changelog"))
         changelog = fp.read()
         fp.close()
-        w = self.xml.get_widget("changelog_window")
-        tv = self.xml.get_widget("changelog_text")
+        w = self.builder.get_object("changelog_window")
+        tv = self.builder.get_object("changelog_text")
         tv.get_buffer().set_text(changelog.decode("latin1", "replace"))
         w.connect('delete-event', self.on_changelog_delete)
         w.show()
@@ -1901,7 +1901,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if not event.button == 3: return False
         res = tv.get_path_at_pos(int(event.x), int(event.y));
         if not res: return False
-        self.xml.get_widget("sqllog_popup").popup(None, None, None, event.button, event.time);
+        self.builder.get_object("sqllog_popup").popup(None, None, None, event.button, event.time);
         return True
         
     def on_connections_button_release(self, tv, event):
@@ -1909,26 +1909,26 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         res = tv.get_path_at_pos(int(event.x), int(event.y));
         menu = None
         if not res or len(res[0]) == 1: 
-            self.xml.get_widget("modify_connection").set_sensitive(not not res)
-            self.xml.get_widget("delete_connection").set_sensitive(not not res)
+            self.builder.get_object("modify_connection").set_sensitive(not not res)
+            self.builder.get_object("delete_connection").set_sensitive(not not res)
             connected_host = False
             if res:
                 model = self.connections_model
                 iter = model.get_iter(res[0])
                 host = model.get_value(iter, 0)
                 connected_host = host.connected
-            self.xml.get_widget("new_database").set_sensitive(connected_host)
-            self.xml.get_widget("refresh_host").set_sensitive(connected_host)
-            menu = self.xml.get_widget("connection_menu")
-            sqllite = self.xml.get_widget("new_sqlite_connection")
+            self.builder.get_object("new_database").set_sensitive(connected_host)
+            self.builder.get_object("refresh_host").set_sensitive(connected_host)
+            menu = self.builder.get_object("connection_menu")
+            sqllite = self.builder.get_object("new_sqlite_connection")
             if have_sqlite:
                 sqllite.show()
             else:
                 sqllite.hide()
         elif len(res[0]) == 2:
-            menu = self.xml.get_widget("database_popup")
+            menu = self.builder.get_object("database_popup")
         elif len(res[0]) == 3:
-            menu = self.xml.get_widget("table_popup")
+            menu = self.builder.get_object("table_popup")
         else: print "no popup at path depth %d\n" % res[0].size()
         if menu:
             menu.popup(None, None, None, event.button, event.time)
@@ -1936,7 +1936,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         
     def on_connections_tv_cursor_changed(self, tv):
         path, column = tv.get_cursor()
-        nb = self.xml.get_widget("main_notebook")
+        nb = self.builder.get_object("main_notebook")
         if path is None:
             print "get_cursor() returned none. don't know which datebase is selected."
             return
@@ -1974,7 +1974,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         iter = self.connections_model.get_iter(path)
         th = self.connections_model.get_value(iter, 0)
         
-        table = self.xml.get_widget("table_properties")
+        table = self.builder.get_object("table_properties")
         prop_count = len(th.props)
         if len(self.table_property_labels) != prop_count:
             for c in self.table_property_labels:
@@ -1986,14 +1986,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             table.resize(prop_count, 2)
             r = 0
             for h, p in zip(th.db.status_headers, th.props):
-                l = gtk.Label(h)
+                l = Gtk.Label(label=h)
                 l.set_alignment(0, 0.5)
-                e = gtk.Entry()
+                e = Gtk.Entry()
                 e.set_editable(False)
                 if p is None: p = ""
                 e.set_text(p)
-                table.attach(l, 0, 1, r, r + 1, gtk.FILL, 0)
-                table.attach(e, 1, 2, r, r + 1, gtk.EXPAND|gtk.FILL|gtk.SHRINK, 0)
+                table.attach(l, 0, 1, r, r + 1, Gtk.AttachOptions.FILL, 0)
+                table.attach(e, 1, 2, r, r + 1, Gtk.AttachOptions.EXPAND|Gtk.AttachOptions.FILL|Gtk.AttachOptions.SHRINK, 0)
                 l.show()
                 e.show()
                 self.table_property_labels.append(l)
@@ -2009,7 +2009,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 e.set_text(p)
                 r += 1
                 
-        tv = self.xml.get_widget("table_textview")
+        tv = self.builder.get_object("table_textview")
         tv.get_buffer().set_text(th.get_create_table())
 
         t = self.table_description
@@ -2018,8 +2018,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         self.table_description.resize(len(th.describe_headers), len(th.fields) + 1)
         c = 0
         for h in th.describe_headers:
-            l = gtk.Label(h)
-            t.attach(l, c, c + 1, 0, 1, gtk.FILL, 0)
+            l = Gtk.Label(label=h)
+            t.attach(l, c, c + 1, 0, 1, Gtk.AttachOptions.FILL, 0)
             l.show()
             c += 1
         r = 1
@@ -2028,13 +2028,13 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             for c in range(len(th.describe_headers)):
                 s = v[c]
                 if s is None: s = ""
-                l = gtk.Label(s)
-                t.attach(l, c, c + 1, r, r + 1, gtk.FILL, 0)
+                l = Gtk.Label(label=s)
+                t.attach(l, c, c + 1, r, r + 1, Gtk.AttachOptions.FILL, 0)
                 l.set_alignment(0, 0.5)
                 l.set_selectable(True)
                 l.show()
             r += 1
-        self.xml.get_widget("vbox14").check_resize()
+        self.builder.get_object("vbox14").check_resize()
         self.tables_count = 0
         self.redraw_tables()
         
@@ -2043,7 +2043,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         iter = self.connections_model.get_iter(path)
         o = self.connections_model.get_value(iter, 0)
         
-        nb = self.xml.get_widget("main_notebook")
+        nb = self.builder.get_object("main_notebook")
         if depth == 1: # host
             self.current_host = host = o
             if host.connected:
@@ -2093,19 +2093,19 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         return
         
     def on_mainwindow_key_release_event(self, window, event):
-        if event.keyval == keysyms.F3:
+        if event.keyval == Gdk.keyval_from_name("F3"):
             self.on_local_search_button_clicked(None, True)
             return True
         
     def on_query_view_key_press_event(self, tv, event):
         q = self.current_query
         path, column = q.treeview.get_cursor()
-        if event.keyval == keysyms.F2:
+        if event.keyval == Gdk.keyval_from_name("F2"):
             q.treeview.set_cursor(path, column, True)
             return True
         
         iter = q.model.get_iter(path)
-        if event.keyval == keysyms.Down and not q.model.iter_next(iter):
+        if event.keyval == Gdk.keyval_from_name("Down") and not q.model.iter_next(iter):
             if q.append_iter and not self.on_apply_record_tool_clicked(None):
                 return True
             self.on_add_record_tool_clicked(None)
@@ -2114,7 +2114,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     def on_query_view_button_release_event(self, tv, event):
         if not event.button == 3: return False
         res = tv.get_path_at_pos(int(event.x), int(event.y));
-        menu = self.xml.get_widget("result_popup")
+        menu = self.builder.get_object("result_popup")
         if res:
             sensitive = True
         else:
@@ -2164,12 +2164,12 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         elif what == "check_table":
             self.current_host = table.db.host
             self.current_host.select_database(table.db)
-            self.xml.get_widget("main_notebook").set_current_page(4)
+            self.builder.get_object("main_notebook").set_current_page(4)
             self.on_execute_query_clicked(None, "check table `%s`" % table.name)
         elif what == "repair_table":
             self.current_host = table.db.host
             self.current_host.select_database(table.db)
-            self.xml.get_widget("main_notebook").set_current_page(4)
+            self.builder.get_object("main_notebook").set_current_page(4)
             self.on_execute_query_clicked(None, "repair table `%s`" % table.name)
                 
     def on_db_popup(self, item):
@@ -2199,14 +2199,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         elif what == "check_tables":
             self.current_host = db.host
             self.current_host.select_database(db)
-            self.xml.get_widget("main_notebook").set_current_page(4)
+            self.builder.get_object("main_notebook").set_current_page(4)
             self.on_execute_query_clicked(
                 None, 
                 "check table %s" % (",".join(map(lambda s: "`%s`" % s, db.tables.keys()))))
         elif what == "repair_tables":
             self.current_host = db.host
             self.current_host.select_database(db)
-            self.xml.get_widget("main_notebook").set_current_page(4)
+            self.builder.get_object("main_notebook").set_current_page(4)
             self.on_execute_query_clicked(
                 None, 
                 "repair table %s" % (",".join(map(lambda s: "`%s`" % s, db.tables.keys()))))
@@ -2222,10 +2222,10 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         what = item.name
         
         if "connection_window" not in self.__dict__:
-            self.connection_window = self.xml.get_widget("connection_window")
-            self.xml.get_widget("cw_apply_button").connect("clicked", self.on_cw_apply)
-            self.xml.get_widget("cw_test_button").connect("clicked", self.on_cw_test)
-            self.xml.get_widget("cw_abort_button").connect("clicked", lambda *a: self.connection_window.hide())
+            self.connection_window = self.builder.get_object("connection_window")
+            self.builder.get_object("cw_apply_button").connect("clicked", self.on_cw_apply)
+            self.builder.get_object("cw_test_button").connect("clicked", self.on_cw_test)
+            self.builder.get_object("cw_abort_button").connect("clicked", lambda *a: self.connection_window.hide())
             self.cw_props = ["name", "host", "port", "user", "password", "database"]
         
         if what == "refresh_host":
@@ -2239,7 +2239,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 self.redraw_host(host, iter)
         elif what == "modify_connection":
             for n in self.cw_props:
-                self.xml.get_widget("cw_%s" % n).set_text(host.__dict__[n])
+                self.builder.get_object("cw_%s" % n).set_text(host.__dict__[n])
             self.cw_mode = "edit"
             self.cw_host = host
             self.connection_window.show()
@@ -2255,7 +2255,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             self.save_config()
         elif what == "new_connection":
             for n in self.cw_props:
-                self.xml.get_widget("cw_%s" % n).set_text("")
+                self.builder.get_object("cw_%s" % n).set_text("")
             self.cw_mode = "new"
             self.connection_window.show()
         elif what == "new_sqlite_connection":
@@ -2271,14 +2271,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if self.cw_mode == "new":
             data = []
             for n in self.cw_props:
-                data.append(self.xml.get_widget("cw_%s" % n).get_text())
+                data.append(self.builder.get_object("cw_%s" % n).get_text())
             if not data[0]:
                 self.connection_window.hide()
                 return
             self.add_mysql_host(*data)
         else:
             for n in self.cw_props:
-                self.cw_host.__dict__[n] = self.xml.get_widget("cw_%s" % n).get_text()
+                self.cw_host.__dict__[n] = self.builder.get_object("cw_%s" % n).get_text()
         self.connection_window.hide()
         self.save_config()
         
@@ -2293,9 +2293,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         for n in ["host", "user", "password", "port:int"]:
             if ":" in n:
                 n, typename = n.split(":", 1)
-                data[widget_map.get(n, n)] = eval("%s(%r)" % (typename, self.xml.get_widget("cw_%s" % n).get_text()))
+                data[widget_map.get(n, n)] = eval("%s(%r)" % (typename, self.builder.get_object("cw_%s" % n).get_text()))
             else:
-                data[widget_map.get(n, n)] = self.xml.get_widget("cw_%s" % n).get_text()
+                data[widget_map.get(n, n)] = self.builder.get_object("cw_%s" % n).get_text()
             
             
         try:
@@ -2367,7 +2367,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if self.execution_timer_running: return
         self.execution_timer_running = True
         self.execution_timer_interval = value
-        gobject.timeout_add(int(value * 1000), self.on_execution_timeout, button)
+        GObject.timeout_add(int(value * 1000), self.on_execution_timeout, button)
         
         
     def on_blob_update_clicked(self, button):
@@ -2376,7 +2376,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         iter = q.model.get_iter(path)
         
         b = self.blob_tv.get_buffer()
-        new_value = b.get_text(b.get_start_iter(), b.get_end_iter())
+        new_value = b.get_text(b.get_start_iter(), b.get_end_iter(), False)
         
         col_max = q.model.get_n_columns()
         for col_num in range(col_max):
@@ -2395,7 +2395,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     def on_msg_tv_button_press_event(self, tv, event):
         if not event.button == 3: return False
         res = tv.get_path_at_pos(int(event.x), int(event.y));
-        self.xml.get_widget("messages_popup").popup(None, None, None, event.button, event.time);
+        self.builder.get_object("messages_popup").popup(None, None, None, event.button, event.time);
         return True
         
     def on_query_popup(self, item):
@@ -2618,18 +2618,18 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             if not self.field_conditions_initialized:
                 self.field_conditions_initialized = True
                 self.fc_count = 4
-                self.fc_window = self.xml.get_widget("field_conditions")
-                table = self.xml.get_widget("fc_table")
+                self.fc_window = self.builder.get_object("field_conditions")
+                table = self.builder.get_object("fc_table")
                 table.resize(1 + self.fc_count, 4)
                 self.fc_entry = []
                 self.fc_combobox = []
                 self.fc_op_combobox = []
                 self.fc_logic_combobox = []
                 for i in range(self.fc_count):
-                    self.fc_entry.append(gtk.Entry())
-                    self.fc_entry[i].connect("activate", lambda *e: self.fc_window.response(gtk.RESPONSE_OK))
-                    self.fc_combobox.append(gtk.combo_box_new_text())
-                    self.fc_op_combobox.append(gtk.combo_box_new_text())
+                    self.fc_entry.append(Gtk.Entry())
+                    self.fc_entry[i].connect("activate", lambda *e: self.fc_window.response(Gtk.ResponseType.OK))
+                    self.fc_combobox.append(Gtk.ComboBoxText())
+                    self.fc_op_combobox.append(Gtk.ComboBoxText())
                     self.fc_op_combobox[i].append_text("=")
                     self.fc_op_combobox[i].append_text("<")
                     self.fc_op_combobox[i].append_text(">")
@@ -2639,7 +2639,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                     self.fc_op_combobox[i].append_text("ISNULL")
                     self.fc_op_combobox[i].append_text("NOT ISNULL")
                     if i:
-                        self.fc_logic_combobox.append(gtk.combo_box_new_text())
+                        self.fc_logic_combobox.append(Gtk.ComboBoxText())
                         self.fc_logic_combobox[i - 1].append_text("disabled")
                         self.fc_logic_combobox[i - 1].append_text("AND")
                         self.fc_logic_combobox[i - 1].append_text("OR")
@@ -2673,7 +2673,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             
             answer = self.fc_window.run()
             self.fc_window.hide()
-            if answer != gtk.RESPONSE_OK: return
+            if answer != Gtk.ResponseType.OK: return
             
             def field_operator_value(field, op, value):
                 if op == "ISNULL":
@@ -2757,12 +2757,12 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if not event.button == 3: return False
         res = tv.get_path_at_pos(int(event.x), int(event.y));
         if not res: return False
-        self.xml.get_widget("processlist_popup").popup(None, None, None, event.button, event.time)
+        self.builder.get_object("processlist_popup").popup(None, None, None, event.button, event.time)
         
     def show_message(self, title, message, window=None):
         if window is None:
             window = self.mainwindow
-        dialog = gtk.MessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, message)
+        dialog = Gtk.MessageDialog(window, Gtk.DialogFlags.MODAL, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, message)
         dialog.label.set_property("use-markup", True)
         dialog.set_title(title)
         dialog.run()
@@ -2771,35 +2771,35 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     def confirm(self, title, message, window=None):
         if window is None:
             window = self.mainwindow
-        dialog = gtk.MessageDialog(window, gtk.DIALOG_MODAL, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, message)
+        dialog = Gtk.MessageDialog(window, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.YES_NO, message)
         dialog.label.set_property("use-markup", True)
         dialog.set_title(title)
         answer = dialog.run()
         dialog.hide()
-        return answer == gtk.RESPONSE_YES
+        return answer == Gtk.ResponseType.YES
         
     def input(self, title, message, default="", window=None):
         if window is None:
             window = self.mainwindow
-        dialog = gtk.Dialog(title, window, gtk.DIALOG_MODAL, 
-            (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT,
-             gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT))
-        label = gtk.Label(message)
+        dialog = Gtk.Dialog(title, window, Gtk.DialogFlags.MODAL, 
+            (Gtk.STOCK_OK, Gtk.ResponseType.ACCEPT,
+             Gtk.STOCK_CANCEL, Gtk.ResponseType.REJECT))
+        label = Gtk.Label(label=message)
         label.set_property("use-markup", True)
         dialog.vbox.pack_start(label, True, True, 2)
-        entry = gtk.Entry()
-        entry.connect("activate", lambda *a: dialog.response(gtk.RESPONSE_ACCEPT))
+        entry = Gtk.Entry()
+        entry.connect("activate", lambda *a: dialog.response(Gtk.ResponseType.ACCEPT))
         dialog.vbox.pack_start(entry, False, True, 2)
         label.show()
         entry.show()
         entry.set_text(default)
         answer = dialog.run()
         dialog.hide()
-        if answer != gtk.RESPONSE_ACCEPT:
+        if answer != Gtk.ResponseType.ACCEPT:
             return None
         return entry.get_text()
 
-    def render_connections_pixbuf(self, column, cell, model, iter):
+    def render_connections_pixbuf(self, column, cell, model, iter, data):
         d = model.iter_depth(iter)
         o = model.get_value(iter, 0)
         if d == 0:
@@ -2816,7 +2816,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         else:
             print "unknown depth %r for render_connections_pixbuf with object %r" % (d, o)
         
-    def render_connections_text(self, column, cell, model, iter):
+    def render_connections_text(self, column, cell, model, iter, data):
         d = model.iter_depth(iter)
         o = model.get_value(iter, 0)
         if d == 0:
@@ -2974,7 +2974,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         # split supported encodings in list
         self.supported_db_encodings = map(lambda e: e.strip(), self.config["supported_db_encodings"].split(";"))
         
-        menu = self.xml.get_widget("query_encoding_menu")
+        menu = self.builder.get_object("query_encoding_menu")
         for child in menu.get_children():
             menu.remove(child)
         self.codings = {}
@@ -2985,7 +2985,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 c = coding
                 description = ""
             self.codings[c] = (index, description)
-            item = gtk.MenuItem(coding, False)
+            item = Gtk.MenuItem(coding, False)
             item.connect("activate", self.on_query_encoding_changed, (c, index))
             menu.append(item)
             item.show()
@@ -3014,10 +3014,10 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         self.first_template = None
         keys = self.config.keys()
         keys.sort()
-        toolbar = self.xml.get_widget("query_toolbar")
-        toolbar.set_style(gtk.TOOLBAR_ICONS)
+        toolbar = self.builder.get_object("query_toolbar")
+        toolbar.set_style(Gtk.ToolbarStyle.ICONS)
         for child in toolbar.get_children():
-            if not child.name.startswith("template_"):
+            if not child.get_name().startswith("template_"):
                 continue
             toolbar.remove(child)
         template_count = 0
@@ -3048,9 +3048,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                     self.first_template = value
                 p = name.split("_", 1)
                 template_count += 1
-                button = gtk.ToolButton(gtk.STOCK_EXECUTE)
+                button = Gtk.ToolButton(Gtk.STOCK_EXECUTE)
                 button.set_name("template_%d" % template_count)
-                button.set_tooltip(self.tooltips, "%s\n%s" % (p[1], value))
+                button.set_tooltip_text("%s\n%s" % (p[1], value))
                 button.connect("clicked", self.on_template, value)
                 toolbar.insert(button, -1)
                 button.show()
@@ -3064,7 +3064,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             self.current_host = h
 
     def on_query_bottom_eventbox_button_press_event(self, ebox, event):
-        self.xml.get_widget("query_encoding_menu").popup(None, None, None, event.button, event.time);
+        self.builder.get_object("query_encoding_menu").popup(None, None, None, event.button, event.time);
         
     def on_query_db_eventbox_button_press_event(self, ebox, event):
         q = self.current_query
@@ -3143,12 +3143,12 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         log = log.replace(">", "&gt;")
         iter = self.sql_log_model.append((timestamp, log, olog))
         self.sql_log_tv.scroll_to_cell(self.sql_log_model.get_path(iter))
-        #self.xml.get_widget("message_notebook").set_current_page(0)
+        #self.builder.get_object("message_notebook").set_current_page(0)
         self.process_events()
         
     def process_events(self):
-        while gtk.events_pending():
-            gtk.main_iteration(False)
+        while Gtk.events_pending():
+            Gtk.main_iteration()
 
     def add_msg_log(self, log):
         if not log: return
@@ -3163,7 +3163,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if now: timestamp = "%s.%02d" % (timestamp, now)
         iter = self.msg_model.append((timestamp, log))
         self.msg_tv.scroll_to_cell(self.msg_model.get_path(iter))
-        self.xml.get_widget("message_notebook").set_current_page(1)
+        self.builder.get_object("message_notebook").set_current_page(1)
 
     def get_selected_table(self):
         path, column = self.connections_tv.get_cursor()
@@ -3178,9 +3178,11 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         for icon in ["offline_host", "host", "db", "table", "field", "emma"]:
             filename = os.path.join(icons_path, icon + ".png")
             try: 
-                self.icons[icon] = gtk.gdk.pixbuf_new_from_file(filename)
+                #self.icons[icon] = Gtk.IconTheme.get_default().load_icon(filename)
+                self.icons[icon] = Pixbuf.new_from_file(filename)
             except: 
                 print "could not load %r" % filename
+                print  sys.exc_value
         self.mainwindow.set_icon(self.icons["emma"])
         
     def refresh_processlist(self, *args):
@@ -3195,19 +3197,19 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             
         if self.current_processlist_host != self.current_host:
             self.current_processlist_host = self.current_host
-            self.xml.get_widget("version_label").set_text("  server version: %s" % self.current_host.handle.get_server_info());
+            self.builder.get_object("version_label").set_text("  server version: %s" % self.current_host.handle.get_server_info());
             
             for col in self.processlist_tv.get_columns():
                 self.processlist_tv.remove_column(col)
             
-            columns = [gobject.TYPE_STRING] * len(fields)
-            self.processlist_model = gtk.ListStore(*columns);
+            columns = [GObject.TYPE_STRING] * len(fields)
+            self.processlist_model = Gtk.ListStore(*columns);
             self.processlist_tv.set_model(self.processlist_model);
             self.processlist_tv.set_headers_clickable(True);
             id = 0
             for field in fields:
                 title = field[0].replace("_", "__")
-                self.processlist_tv.insert_column_with_data_func(-1, title, gtk.CellRendererText(), self.render_mysql_string, id)
+                self.processlist_tv.insert_column_with_data_func(-1, title, Gtk.CellRendererText(), self.render_mysql_string, id)
                 id += 1
             
         for proc in rows:
@@ -3222,7 +3224,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if not db:
             return
         if not "tables_tv" in self.__dict__:
-            self.tables_tv = self.xml.get_widget("tables_treeview")
+            self.tables_tv = self.builder.get_object("tables_treeview")
             self.tables_model = None
             self.tables_db = None
             
@@ -3234,15 +3236,15 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                     self.tables_tv.remove_column(col)
 
             fields = db.status_headers
-            columns = [gobject.TYPE_STRING] * len(fields)
+            columns = [GObject.TYPE_STRING] * len(fields)
             if not columns:
                 return
-            self.tables_model = gtk.ListStore(*columns);
+            self.tables_model = Gtk.ListStore(*columns);
             self.tables_tv.set_model(self.tables_model);
             id = 0
             for field in fields:
                 title = field.replace("_", "__")
-                self.tables_tv.insert_column_with_data_func(-1, title, gtk.CellRendererText(), self.render_mysql_string, id)
+                self.tables_tv.insert_column_with_data_func(-1, title, Gtk.CellRendererText(), self.render_mysql_string, id)
                 id += 1
             self.tables_count = 0
         
@@ -3414,7 +3416,7 @@ def start(args):
     e = Emma()
 
     while True:
-        gtk.main()
+        Gtk.main()
         del e
         if not new_instance: break
         e = new_instance

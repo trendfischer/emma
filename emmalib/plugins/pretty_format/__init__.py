@@ -20,8 +20,8 @@
 import os
 import sys
 import time
-import gtk.glade
-import gobject
+from gi.repository import GObject
+from gi.repository import Gtk
 import pprint
 import re
 import cStringIO
@@ -172,8 +172,8 @@ class pretty_format:
 		self.toolbar_items = []
 		self.plugin_dir = os.path.dirname(os.path.abspath(__file__))
 
-		self.install_toolbar_item("query_toolbar", gtk.STOCK_INDENT, "pretty format query", self.on_pretty_format)
-		self.install_toolbar_item("query_toolbar", gtk.STOCK_UNINDENT, "compress query", self.on_compress)
+		self.install_toolbar_item("query_toolbar", Gtk.STOCK_INDENT, "pretty format query", self.on_pretty_format)
+		self.install_toolbar_item("query_toolbar", Gtk.STOCK_UNINDENT, "compress query", self.on_compress)
 		q = self.emma.current_query
 		if sys.stdout.debug and 0:
 			# check if we are running with debug output - enable example text
@@ -195,18 +195,18 @@ select * from user;
 			del item
 		
 	def install_toolbar_item(self, toolbar_name, stock, item_catpion, callback):
-		toolbar = self.emma.xml.get_widget(toolbar_name)
-		button = gtk.ToolButton(stock)
+		toolbar = self.emma.builder.get_object(toolbar_name)
+		button = Gtk.ToolButton(stock)
 		button.set_label(item_catpion)
 		button.connect("clicked", callback)
-		button.set_tooltip(self.emma.tooltips, item_catpion)
+		button.set_tooltip_text(item_catpion)
 		toolbar.insert(button, -1)
 		button.show()
 		self.toolbar_items.append((button, toolbar)) 
 
 	def get_query_text(self, q):
 		buffer = q.textview.get_buffer()
-		return buffer.get_text(buffer.get_start_iter(), buffer.get_end_iter())
+		return buffer.get_text(buffer.get_start_iter(), buffer.get_end_iter(), False)
 
 	def set_query_text(self, q, text):
 		buffer = q.textview.get_buffer()

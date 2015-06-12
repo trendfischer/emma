@@ -20,8 +20,9 @@
 import os
 import sys
 import time
-import gtk.glade
-import gobject
+from gi.repository import Gtk
+from gi.repository import GObject
+from gi.repository import Gdk
 import pprint
 import re
 pp = pprint.PrettyPrinter()
@@ -82,18 +83,19 @@ class table_editor:
 		else:
 			print "glade file: %r" % self.glade_file
 		
-		self.xml = gtk.glade.XML(self.glade_file)
-		self.window = self.xml.get_widget("table_editor")
-		self.xml.signal_autoconnect(self)
-		
-		self.treeview = self.xml.get_widget("table_columns")
-		self.model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)
+		self.builder = Gtk.Builder()
+		self.builder.add_from_file(self.glade_file)
+		self.builder.connect_signals(self)
+		self.window = self.builder.get_object("table_editor")
+
+		self.treeview = self.builder.get_object("table_columns")
+		self.model = Gtk.ListStore(GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_PYOBJECT, GObject.TYPE_PYOBJECT)
 		self.treeview.set_model(self.model)
 		self.treeview.set_headers_clickable(False)
 		self.treeview.set_reorderable(True)
-		self.treeview.insert_column_with_attributes(-1, "name", gtk.CellRendererText(), text=0)
-		self.treeview.insert_column_with_attributes(-1, "type", gtk.CellRendererText(), text=1)
-		self.treeview.insert_column_with_attributes(-1, "comment", gtk.CellRendererText(), text=2)
+		self.treeview.insert_column_with_attributes(-1, "name", Gtk.CellRendererText(), text=0)
+		self.treeview.insert_column_with_attributes(-1, "type", Gtk.CellRendererText(), text=1)
+		self.treeview.insert_column_with_attributes(-1, "comment", Gtk.CellRendererText(), text=2)
 		self.install_popup_item("table_popup", "edit table", self.edit_table)
 		self.ignore_changes = True
 		self.treeview.connect("drag-begin", self.drag_begin)
@@ -122,11 +124,11 @@ class table_editor:
 		self.popup_items = []
 		
 	def install_popup_item(self, popup_name, item_catpion, callback):
-		popup = self.emma.xml.get_widget(popup_name)
+		popup = self.emma.builder.get_object(popup_name)
 		for child in popup.get_children():
 			if child.get_child().get_text() == item_catpion:
 				print "%s: warning: there already is a menu item called '%s' in '%s'" % (__name__, item_caption, popup_name)
-		item = gtk.MenuItem(item_catpion)
+		item = Gtk.MenuItem(item_catpion)
 		item.connect("activate", callback)
 		item.show()
 		popup.append(item)
@@ -135,19 +137,19 @@ class table_editor:
 	def edit_table(self, menuitem):
 		path, column, iter, table = self.emma.get_current_table()
 		self.table = table
-		tname = self.xml.get_widget("table_name")
+		tname = self.builder.get_object("table_name")
 		if not tname:
-			print "error: table_name-field not found in xml", self.xml
+			print "error: table_name-field not found in xml", self.builder
 		e = tname.set_text(table.name)
 		e = tname.grab_focus()
-		e = self.xml.get_widget("table_comment").set_text(table.props[14])
+		e = self.builder.get_object("table_comment").set_text(table.props[14])
 		self.model.clear()
 		for name in table.field_order:
 			field = table.fields[name]
 			comment = self.extract_comment(field[5]) # todo
 			self.model.append(row=(field[0], field[1], comment, list(field), field))
-		self.xml.get_widget("table_deletefield").set_sensitive(False)
-		self.xml.get_widget("table_field_properties").set_sensitive(False)
+		self.builder.get_object("table_deletefield").set_sensitive(False)
+		self.builder.get_object("table_field_properties").set_sensitive(False)
 		self.deleted = set()
 		self.window.show_all()
 	
@@ -164,10 +166,10 @@ class table_editor:
 		row = [field_name, "int", "", "", "", ""]
 		iter = self.model.append(row=(row[0], row[1], "", list(row), None))
 		self.treeview.set_cursor(self.model.get_path(iter))
-		self.xml.get_widget("table_field_name").grab_focus()
+		self.builder.get_object("table_field_name").grab_focus()
 		
 	def on_table_columns_row_activated(self, *args):
-		self.xml.get_widget("table_field_name").grab_focus()
+		self.builder.get_object("table_field_name").grab_focus()
 		
 	def on_table_deletefield_clicked(self, button):
 		print "delete field!"
@@ -176,8 +178,8 @@ class table_editor:
 		if row[4]:
 			self.deleted.add(row[3][0])
 		del self.model[path]
-		self.xml.get_widget("table_deletefield").set_sensitive(False)
-		self.xml.get_widget("table_field_properties").set_sensitive(False)
+		self.builder.get_object("table_deletefield").set_sensitive(False)
+		self.builder.get_object("table_field_properties").set_sensitive(False)
 		
 	def parse_type(self, string):
 		match = re.search("\(([0-9,]+)\)$", string)
@@ -212,17 +214,17 @@ class table_editor:
 	def set_field(self, xml_name, value):
 		if xml_name.endswith("_sensitive"):
 			xml_name = xml_name[:-len("_sensitive")]
-			widget = self.xml.get_widget(xml_name)
-			if type(widget) != gtk.CheckButton:
+			widget = self.builder.get_object(xml_name)
+			if type(widget) != Gtk.CheckButton:
 				widget.set_editable(test(value, True, False))
 			widget.set_sensitive(test(value, True, False))
 			return
-		widget = self.xml.get_widget(xml_name)
-		if type(widget) == gtk.Entry:
+		widget = self.builder.get_object(xml_name)
+		if type(widget) == Gtk.Entry:
 			widget.set_text(str(value))
-		elif type(widget) == gtk.CheckButton:
+		elif type(widget) == Gtk.CheckButton:
 			widget.set_active(value)
-		elif type(widget) == gtk.ComboBox:
+		elif type(widget) == Gtk.ComboBox:
 			model = widget.get_model()
 			for i, v in enumerate(model):
 				if value in v[0].split(", "):
@@ -256,15 +258,16 @@ class table_editor:
 		set("table_field_isautoincrement", field[5].find("auto_increment") != -1)
 		set("table_field_unsigned", field[5].find("unsigned") != -1)
 		set("table_field_binary", field[5].find("binary") != -1)
-		self.xml.get_widget("table_field_properties").set_sensitive(True)
+		self.builder.get_object("table_field_properties").set_sensitive(True)
 		self.set_type_restrictions(ftype)
 		self.ignore_changes = False
 		
 	def on_cursor_changed(self, treeview):
 		path, column = treeview.get_cursor()
-		row = self.model[path]
-		self.set_current_field(row[3])
-		self.xml.get_widget("table_deletefield").set_sensitive(True)
+		if path:
+			row = self.model[path]
+			self.set_current_field(row[3])
+			self.builder.get_object("table_deletefield").set_sensitive(True)
 		
 	def on_table_field_changed(self, widget):
 		if self.ignore_changes:
@@ -288,10 +291,10 @@ class table_editor:
 		if fname == "field_name":
 			row[3][0] = widget.get_text()
 		elif fname == "field_type" or fname == "field_length":
-			widget = self.xml.get_widget("table_field_type")
+			widget = self.builder.get_object("table_field_type")
 			ftype = widget.get_active_text().split(", ")[0]
 			capabilities = self.get_field_capabilities(ftype)
-			length = self.xml.get_widget("table_field_length").get_text()
+			length = self.builder.get_object("table_field_length").get_text()
 			self.set_type_restrictions(ftype, capabilities)
 			if capabilities & LEN and length != "":
 				ftype += "(%s)" % length
@@ -303,7 +306,7 @@ class table_editor:
 			self.set_field("table_field_default_sensitive", default)
 			if not default:
 				self.set_field("table_field_default", "")
-			row[3][4] = test(default, self.xml.get_widget("table_field_default").get_text(), None)
+			row[3][4] = test(default, self.builder.get_object("table_field_default").get_text(), None)
 		elif fname == "field_comment":
 			current = split_strings(row[3][5])
 			for i, c in enumerate(current):
@@ -392,7 +395,7 @@ class table_editor:
 		
 		# rename table
 		table_changed = False
-		new_name = self.xml.get_widget("table_name").get_text()
+		new_name = self.builder.get_object("table_name").get_text()
 		if new_name != self.table.name:
 			old_name = self.table.name
 			query += "%srename to `%s` " % (add, new_name)
@@ -401,7 +404,7 @@ class table_editor:
 		
 		# table comment
 		# todo
-		comment = self.xml.get_widget("table_comment").get_text()
+		comment = self.builder.get_object("table_comment").get_text()
 		if comment != self.table["Comment"]:
 			query += "%scomment = '%s' " % (add, esc(comment))
 			add = ""

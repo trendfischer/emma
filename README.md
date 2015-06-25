@@ -1,5 +1,8 @@
 emma
 ====
+
+**ATTENTION: This branch is work in progress. The intention is to switch from gtk2 to gtk3 libraries. Since the gtk api changed, there are multiple functions still not working!**
+
 ### Extendable MySQL Managing Assistant
 
 emma is a graphical toolkit for MySQL database developers and administrators, it is the successor of yamysqlfront. 

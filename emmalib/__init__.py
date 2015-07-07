@@ -1933,7 +1933,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             menu = self.builder.get_object("table_popup")
         else: print "no popup at path depth %d\n" % res[0].size()
         if menu:
-            menu.popup(None, None, None, event.button, event.time)
+            menu.popup(None, None, None, None, event.button, event.time)
         return True
         
     def on_connections_tv_cursor_changed(self, treeview):
@@ -2221,7 +2221,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         else:
             iter = None
             host = None
-        what = item.name
+        what = item.get_name()
         
         if "connection_window" not in self.__dict__:
             self.connection_window = self.builder.get_object("connection_window")

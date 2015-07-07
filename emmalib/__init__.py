@@ -68,15 +68,17 @@ re_src_after_order = "(?:[ \r\n\t]" + re_src_after_order_end + ")"
 re_src_query_order = "(?is)(.*order[ \r\n\t]+by[ \r\n\t]+)(.*?)([ \r\n\t]*" + re_src_after_order_end + ")"
 
 emmalib_file = os.path.abspath(emmalib_file)
+emmalib_path = os.path.dirname(os.path.dirname(emmalib_file))
     
 print "sys prefix:", sys.prefix
+print "emmalib path:", emmalib_path
 
 emma_path = os.path.dirname(emmalib_file)
 
-if os.path.isdir("emmalib"):
+if os.path.isdir(os.path.join(emmalib_path, "emmalib")):
     # svn dev env
-    emma_share_path = "emmalib"
-    icons_path = "icons"
+    emma_share_path = os.path.join(emmalib_path, "emmalib")
+    icons_path = os.path.join(emmalib_path, "icons")
     glade_path = emma_share_path
 else:
     emma_share_path = os.path.join(sys.prefix, "share/emma/")
@@ -1904,9 +1906,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         self.builder.get_object("sqllog_popup").popup(None, None, None, event.button, event.time);
         return True
         
-    def on_connections_button_release(self, tv, event):
+    def on_connections_button_release(self, treeview, event):
         if not event.button == 3: return False
-        res = tv.get_path_at_pos(int(event.x), int(event.y));
+        res = treeview.get_path_at_pos(int(event.x), int(event.y));
         menu = None
         if not res or len(res[0]) == 1: 
             self.builder.get_object("modify_connection").set_sensitive(not not res)
@@ -1934,8 +1936,8 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             menu.popup(None, None, None, event.button, event.time)
         return True
         
-    def on_connections_tv_cursor_changed(self, tv):
-        path, column = tv.get_cursor()
+    def on_connections_tv_cursor_changed(self, treeview):
+        path, column = treeview.get_cursor()
         nb = self.builder.get_object("main_notebook")
         if path is None:
             print "get_cursor() returned none. don't know which datebase is selected."
@@ -2038,7 +2040,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         self.tables_count = 0
         self.redraw_tables()
         
-    def on_connections_row_activated(self, tv, path, col):
+    def on_connections_row_activated(self, treeview, path, col):
         depth = len(path)
         iter = self.connections_model.get_iter(path)
         o = self.connections_model.get_value(iter, 0)

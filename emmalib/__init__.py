@@ -1792,7 +1792,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         self.query_notebook.set_current_page(len(self.queries) - 1)
         self.current_query.textview.grab_focus()
         builder.connect_signals(self)
-        
+
     def on_query_notebook_switch_page(self, nb, pointer, page):
         if page >= len(self.queries):
             page = len(self.queries) - 1
@@ -1903,7 +1903,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if not event.button == 3: return False
         res = tv.get_path_at_pos(int(event.x), int(event.y));
         if not res: return False
-        self.builder.get_object("sqllog_popup").popup(None, None, None, event.button, event.time);
+        self.builder.get_object("sqllog_popup").popup(None, None, None, None, event.button, event.time);
         return True
         
     def on_connections_button_release(self, treeview, event):
@@ -2123,16 +2123,16 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             sensitive = False
         for c in menu.get_children():
             for s in ["edit", "set ", "delete"]:
-                if c.name.find(s) != -1:
+                if c.get_name().find(s) != -1:
                     c.set_sensitive(sensitive and self.current_query.editable)
                     break
             else:
-                if c.name not in ["add_record"]:
+                if c.get_name() not in ["add_record"]:
                     c.set_sensitive(sensitive)
                 else:
                     c.set_sensitive(self.current_query.add_record.get_property("sensitive"))
         #menu.popup(None, None, None, event.button, event.time)
-        menu.popup(None, None, None, 0, event.time) # strange!
+        menu.popup(None, None, None, None, 0, event.time) # strange!
         return True
 
     def get_current_table(self):
@@ -2397,7 +2397,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     def on_msg_tv_button_press_event(self, tv, event):
         if not event.button == 3: return False
         res = tv.get_path_at_pos(int(event.x), int(event.y));
-        self.builder.get_object("messages_popup").popup(None, None, None, event.button, event.time);
+        self.builder.get_object("messages_popup").popup(None, None, None, None, event.button, event.time);
         return True
         
     def on_query_popup(self, item):
@@ -2759,7 +2759,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         if not event.button == 3: return False
         res = tv.get_path_at_pos(int(event.x), int(event.y));
         if not res: return False
-        self.builder.get_object("processlist_popup").popup(None, None, None, event.button, event.time)
+        self.builder.get_object("processlist_popup").popup(None, None, None, None, event.button, event.time)
         
     def show_message(self, title, message, window=None):
         if window is None:
@@ -3066,7 +3066,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             self.current_host = h
 
     def on_query_bottom_eventbox_button_press_event(self, ebox, event):
-        self.builder.get_object("query_encoding_menu").popup(None, None, None, event.button, event.time);
+        self.builder.get_object("query_encoding_menu").popup(None, None, None, None, event.button, event.time);
         
     def on_query_db_eventbox_button_press_event(self, ebox, event):
         q = self.current_query
@@ -3081,7 +3081,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 # path was not valid
                 pass
 
-        i = self.connections_model.get_iter_root()
+        i = self.connections_model.get_iter_first()
         while i and self.connections_model.iter_is_valid(i):
             if self.connections_model[i][0] == host:
                 break
@@ -3091,7 +3091,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             q.current_host = q.current_db = None
             q.update_db_label()
             return
-            
+
         host_path = self.connections_model.get_path(i)
         self.connections_tv.scroll_to_cell(host_path, column=None, use_align=True, row_align=0.0, col_align=0.0)
         if db is None:

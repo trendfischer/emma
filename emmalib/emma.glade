@@ -3079,6 +3079,14 @@ successor of yamysqlfront</property>
       </object>
     </child>
     <child>
+      <object class="GtkMenuItem" id="copy_record_as_insert">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">copy record as SQL-Insert</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="on_query_popup"/>
+      </widget>
+    </child>
+    <child>
       <object class="GtkImageMenuItem" id="copy_column_as_csv">
         <property name="label" translatable="yes">copy column as csv</property>
         <property name="visible">True</property>

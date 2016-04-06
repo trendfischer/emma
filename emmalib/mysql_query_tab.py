@@ -48,7 +48,7 @@ class mysql_query_tab:
 		for attribute, xmlname in renameload.iteritems():
 			self.__dict__[attribute] = xml.get_widget(xmlname)
 
-		self.toolbar.set_style(gtk.TOOLBAR_ICONS)
+		#self.toolbar.set_style(gtk.TOOLBAR_ICONS)
 
 		print "Try to insert gtksourceview \n"
 		# replace textview with gtksourcevice

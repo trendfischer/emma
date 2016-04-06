@@ -2434,6 +2434,25 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                     value += '"%s"' % v
             self.clipboard.set_text(value)
             self.pri_clipboard.set_text(value)
+        elif item.name == "copy_record_as_insert":
+            col_max = q.model.get_n_columns()
+            table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, 0)
+            value = 'INSERT INTO `%s` SET' % table
+            first = 1
+            columnList = q.treeview.get_columns()
+            for col_num in range(col_max):
+                if first:
+                    first = 0
+                else:
+                    value += ', '
+                value += '`%s` = ' % columnList[col_num].get_title().replace("__", "_")
+                v = q.model.get_value(iter, col_num)
+                if not v is None: 
+                    value += '"%s"' % v
+                else:
+                    value += 'NULL'
+            self.clipboard.set_text(value)
+            self.pri_clipboard.set_text(value)
         elif item.name == "copy_column_as_csv":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):

@@ -29,6 +29,7 @@ import bz2
 import sql
 import traceback
 from query_regular_expression import *
+from pprint import pprint
 
 try:
     from gi.repository import Gtk
@@ -1880,17 +1881,17 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     def on_sql_log_activate(self, *args):
         if len(args) == 1:
             menuitem = args[0]
-            if menuitem.name == "clear_all_entries":
+            if Gtk.Buildable.get_name(menuitem) == "clear_all_entries":
                 self.sql_log_model.clear()
                 
             path, column = self.sql_log_tv.get_cursor()
             row = self.sql_log_model[path]
-            if menuitem.name == "copy_sql_log":
-                self.clipboard.set_text(row[2])
-                self.pri_clipboard.set_text(row[2])
-            elif menuitem.name == "set_as_query_text":
+            if Gtk.Buildable.get_name(menuitem) == "copy_sql_log":
+                self.clipboard.set_text(row[2], -1)
+                self.pri_clipboard.set_text(row[2], -1)
+            elif Gtk.Buildable.get_name(menuitem) == "set_as_query_text":
                 self.current_query.textview.get_buffer().set_text(row[2])
-            if menuitem.name == "delete_sql_log":
+            if Gtk.Buildable.get_name(menuitem) == "delete_sql_log":
                 iter = self.sql_log_model.get_iter(path)
                 self.sql_log_model.remove(iter)
             return True
@@ -2123,11 +2124,11 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             sensitive = False
         for c in menu.get_children():
             for s in ["edit", "set ", "delete"]:
-                if c.get_name().find(s) != -1:
+                if Gtk.Buildable.get_name(c).find(s) != -1:
                     c.set_sensitive(sensitive and self.current_query.editable)
                     break
             else:
-                if c.get_name() not in ["add_record"]:
+                if Gtk.Buildable.get_name(c) not in ["add_record"]:
                     c.set_sensitive(sensitive)
                 else:
                     c.set_sensitive(self.current_query.add_record.get_property("sensitive"))
@@ -2142,7 +2143,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     
     def on_table_popup(self, item):
         path, column, iter, table = self.get_current_table()
-        what = item.name
+        what = Gtk.Buildable.get_name(item)
         
         if what == "refresh_table":
             table.refresh()
@@ -2177,7 +2178,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
     def on_db_popup(self, item):
         path, column = self.connections_tv.get_cursor()
         iter = self.connections_model.get_iter(path)
-        what = item.name
+        what = Gtk.Buildable.get_name(item)
         db = self.connections_model.get_value(iter, 0)
         
         if what == "refresh_database":
@@ -2221,7 +2222,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         else:
             iter = None
             host = None
-        what = item.get_name()
+        what = Gtk.Buildable.get_name(item)
         
         if "connection_window" not in self.__dict__:
             self.connection_window = self.builder.get_object("connection_window")
@@ -2391,7 +2392,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         return self.on_query_change_data(crs[0], path, new_value, col_num, force_update=self.blob_encoding != q.encoding)
         
     def on_messages_popup(self, item):
-        if item.name == "clear_messages":
+        if Gtk.Buildable.get_name(item) == "clear_messages":
             self.msg_model.clear()
         
     def on_msg_tv_button_press_event(self, tv, event):
@@ -2400,12 +2401,14 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         self.builder.get_object("messages_popup").popup(None, None, None, None, event.button, event.time);
         return True
         
+    # TODO refactor every if like on_copy_field_value and change glade signal handler
     def on_query_popup(self, item):
         q = self.current_query
         path, column = q.treeview.get_cursor()
         iter = q.model.get_iter(path)
         
-        if item.name == "copy_field_value":
+        itemname = Gtk.Buildable.get_name(item)
+        if itemname == "copy_field_value":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -2414,18 +2417,18 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 print "column not found!"
                 return
             value = q.model.get_value(iter, col_num)
-            self.clipboard.set_text(value)
-            self.pri_clipboard.set_text(value)
-        elif item.name == "copy_record_as_csv":
+            self.clipboard.set_text(value, -1)
+            self.pri_clipboard.set_text(value, -1)
+        elif itemname == "copy_record_as_csv":
             col_max = q.model.get_n_columns()
             value = ""
             for col_num in range(col_max):
                 if value: value += self.config["copy_record_as_csv_delim"]
                 v = q.model.get_value(iter, col_num)
                 if not v is None: value += v
-            self.clipboard.set_text(value)
-            self.pri_clipboard.set_text(value)
-        elif item.name == "copy_record_as_quoted_csv":
+            self.clipboard.set_text(value, -1)
+            self.pri_clipboard.set_text(value, -1)
+        elif itemname == "copy_record_as_quoted_csv":
             col_max = q.model.get_n_columns()
             value = ""
             for col_num in range(col_max):
@@ -2434,9 +2437,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 if not v is None: 
                     v = v.replace("\"", "\\\"")
                     value += '"%s"' % v
-            self.clipboard.set_text(value)
-            self.pri_clipboard.set_text(value)
-        elif item.name == "copy_record_as_insert":
+            self.clipboard.set_text(value, -1)
+            self.pri_clipboard.set_text(value, -1)
+        elif itemname == "copy_record_as_insert":
             col_max = q.model.get_n_columns()
             table, where, field, value, row_iter = self.get_unique_where(q.last_source, path, 0)
             value = 'INSERT INTO `%s` SET' % table
@@ -2453,9 +2456,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                     value += '"%s"' % v
                 else:
                     value += 'NULL'
-            self.clipboard.set_text(value)
-            self.pri_clipboard.set_text(value)
-        elif item.name == "copy_column_as_csv":
+            self.clipboard.set_text(value, -1)
+            self.pri_clipboard.set_text(value, -1)
+        elif itemname == "copy_column_as_csv":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -2470,9 +2473,9 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 v = q.model.get_value(iter, col_num)
                 if not v is None: value += v
                 iter = q.model.iter_next(iter)
-            self.clipboard.set_text(value)
-            self.pri_clipboard.set_text(value)
-        elif item.name == "copy_column_as_quoted_csv":
+            self.clipboard.set_text(value, -1)
+            self.pri_clipboard.set_text(value, -1)
+        elif itemname == "copy_column_as_quoted_csv":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -2489,16 +2492,16 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                     v = v.replace("\"", "\\\"")
                     value += '"%s"' % v
                 iter = q.model.iter_next(iter)
-            self.clipboard.set_text(value)
-            self.pri_clipboard.set_text(value)
-        elif item.name == "copy_column_names":
+            self.clipboard.set_text(value, -1)
+            self.pri_clipboard.set_text(value, -1)
+        elif itemname == "copy_column_names":
             value = ""
             for col in q.treeview.get_columns():
                 if value: value += self.config["copy_record_as_csv_delim"]
                 value += col.get_title().replace("__", "_")
-            self.clipboard.set_text(value)
-            self.pri_clipboard.set_text(value)
-        elif item.name == "set_value_null":
+            self.clipboard.set_text(value, -1)
+            self.pri_clipboard.set_text(value, -1)
+        elif itemname == "set_value_null":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -2510,7 +2513,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
             update_query = "update `%s` set `%s`=NULL where %s limit 1" % (table, field, where)
             if self.current_host.query(update_query, encoding=q.encoding):
                 q.model.set_value(row_iter, col_num, None)
-        elif item.name == "set_value_now":
+        elif itemname == "set_value_now":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -2528,7 +2531,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 print "error: can't find modfied row!?"
                 return
             q.model.set_value(row_iter, col_num, result[0][0])
-        elif item.name == "set_value_unix_timestamp":
+        elif itemname == "set_value_unix_timestamp":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -2546,7 +2549,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 print "error: can't find modfied row!?"
                 return
             q.model.set_value(row_iter, col_num, result[0][0])
-        elif item.name == "set_value_as_password":
+        elif itemname == "set_value_as_password":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -2564,7 +2567,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
                 print "error: can't find modfied row!?"
                 return
             q.model.set_value(row_iter, col_num, result[0][0])
-        elif item.name == "set_value_to_sha":
+        elif itemname == "set_value_to_sha":
             col_max = q.model.get_n_columns()
             for col_num in range(col_max):
                 if column == q.treeview.get_column(col_num):
@@ -3038,7 +3041,7 @@ syntax-highlighting, i can open this file using the <b>execute file from disk</b
         toolbar = self.builder.get_object("query_toolbar")
         toolbar.set_style(Gtk.ToolbarStyle.ICONS)
         for child in toolbar.get_children():
-            if not child.get_name().startswith("template_"):
+            if not Gtk.Buildable.get_name(child).startswith("template_"):
                 continue
             toolbar.remove(child)
         template_count = 0
